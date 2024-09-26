@@ -77,6 +77,9 @@ static inline bool check_permission(PTE *pte, bool ok, vaddr_t vaddr, int type) 
 #ifdef CONFIG_RVH
   ok = ok && !(pte->u && ((mode == MODE_S) && (!(virt? vsstatus->sum: mstatus->sum) || ifetch)));
   Logtr("ok: %i, mode == U: %i, pte->u: %i, ppn: %lx, virt: %d", ok, mode == MODE_U, pte->u, (uint64_t)pte->ppn << 12, virt);
+  if (vaddr == 0x80200664) {
+    printf("ok: %i, mode: %d, pte->u: %i, ppn: %lx, virt: %d\n", ok, mode, pte->u, (uint64_t)pte->ppn << 12, virt);
+  }
 #else
   ok = ok && !(pte->u && ((mode == MODE_S) && (!mstatus->sum || ifetch)));
   Logtr("ok: %i, mode: %s, pte->u: %i, a: %i d: %i, ppn: %lx ", ok,
@@ -96,6 +99,9 @@ static inline bool check_permission(PTE *pte, bool ok, vaddr_t vaddr, int type) 
     if (!(ok && pte->x && !pte->pad) || update_ad) {
       assert(!cpu.amo);
       INTR_TVAL_REG(EX_IPF) = vaddr;
+      if (vaddr == 0x80200664) {
+        printf("raise ipf ok: %d, pte->x: %d, pte->pad: %x, update_ad: %d\n", ok, pte->x, pte->pad, update_ad);
+      }
       longjmp_exception(EX_IPF);
       return false;
     }
@@ -301,9 +307,15 @@ static word_t pte_read(paddr_t addr, int type, int mode, vaddr_t vaddr) {
 
 static paddr_t ptw(vaddr_t vaddr, int type) {
   Logtr("Page walking for 0x%lx", vaddr);
+  if (vaddr == 0x80200664) {
+    printf("Attention:\n");
+  }
   word_t pg_base = PGBASE(satp->ppn);
   int max_level;
   max_level = satp->mode == SATP_MODE_Sv39 ? 3 : 4;
+  if (vaddr == 0x80200664) {
+    printf("max level: %d\n", max_level);
+  }
 #ifdef CONFIG_RVH
   int virt = cpu.v;
   int mode = cpu.mode;
@@ -360,24 +372,50 @@ static paddr_t ptw(vaddr_t vaddr, int type) {
         level, vaddr, pg_base, p_pte, pte.val);
     }
 #endif
+  if (vaddr == 0x80200664) {
+    printf("[NEMU] ptw: level %d, vaddr 0x%lx, pg_base 0x%lx, p_pte 0x%lx, pte.val 0x%lx\n", level, vaddr, pg_base, p_pte, pte.val);
+  }
     pg_base = PGBASE((uint64_t)pte.ppn);
     if (!pte.v || (!pte.r && pte.w) || pte.pad) {
+      if (vaddr == 0x80200664) {
+        printf("1\n");
+      }
       goto bad;
     } else if ((ISNDEF(CONFIG_RV_SVPBMT) || !pbmte) && pte.pbmt) {
+      if (vaddr == 0x80200664) {
+        printf("2\n");
+      }
       goto bad;
     } else if (pte.pbmt == 3) {
+      if (vaddr == 0x80200664) {
+        printf("3\n");
+      }
       goto bad;
     } else if (ISNDEF(CONFIG_RV_SVNAPOT) && pte.n) {
+      if (vaddr == 0x80200664) {
+        printf("4\n");
+      }
       goto bad;
     }
     if (pte.r || pte.x) { // is leaf
+      if (vaddr == 0x80200664) {
+        printf("5\n");
+      }
       break;
     } else { // not leaf
       if (pte.a || pte.d || pte.u || pte.pbmt || pte.n) {
+        if (vaddr == 0x80200664) {
+          printf("6\n");
+        }
         goto bad;
       }
       level --;
-      if (level < 0) { goto bad; }
+      if (level < 0) { 
+        if (vaddr == 0x80200664) {
+          printf("7\n");
+        }
+        goto bad;
+      }
     }
   }
 #ifdef CONFIG_RVH
@@ -390,6 +428,9 @@ static paddr_t ptw(vaddr_t vaddr, int type) {
     word_t pg_mask = ((1ull << VPNiSHFT(level)) - 1);
     if ((pg_base & pg_mask) != 0) {
       // missaligned superpage
+      if (vaddr == 0x80200664) {
+        printf("8\n");
+      }
       goto bad;
     }
     pg_base = (pg_base & ~pg_mask) | (vaddr & pg_mask & ~PGMASK);
@@ -412,6 +453,9 @@ static paddr_t ptw(vaddr_t vaddr, int type) {
     int ex;
     case MEM_TYPE_IFETCH:
 #ifdef CONFIG_RVH
+      if (vaddr == 0x80200664) {
+        printf("ad bit\n");
+      }
       if(cpu.v){
         if(intr_deleg_S(EX_IPF)){
           vstval->val = vaddr;
@@ -476,6 +520,9 @@ static paddr_t ptw(vaddr_t vaddr, int type) {
   return pg_base | MEM_RET_OK;
 
 bad:
+if (vaddr == 0x80200664) {
+  printf("Memory translation bad\n");
+}
   Logtr("Memory translation bad");
 #ifdef CONFIG_RVH
   check_permission(&pte, false, vaddr, type, virt, mode);
