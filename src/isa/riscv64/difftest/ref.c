@@ -184,6 +184,11 @@ void isa_difftest_regcpy(void *dut, bool direction) {
 #endif // CONFIG_LIGHTQS
   //ramcmp();
   if (direction == DIFFTEST_TO_REF) {
+    if(cpu.mip != ((riscv64_CPU_state*)dut)->mip) {
+      printf("REGCPY Warning, dut interrupt inject !!!!!! dut mip %lx, ref mip %lx, different %lx\n", ((riscv64_CPU_state*)dut)->mip, cpu.mip, ((riscv64_CPU_state*)dut)->mip ^ cpu.mip);
+      printf("DUT mepc %lx mcause %lx mtvec %lx mstatus %lx mie %lx\n", ((riscv64_CPU_state*)dut)->mepc, ((riscv64_CPU_state*)dut)->mcause, ((riscv64_CPU_state*)dut)->mtvec, ((riscv64_CPU_state*)dut)->mstatus, ((riscv64_CPU_state*)dut)->mie);
+      printf("REF mepc %lx mcause %lx mtvec %lx mstatus %lx mie %lx\n", cpu.mepc, cpu.mcause, cpu.mtvec, cpu.mstatus, cpu.mie);
+    }
     memcpy(&cpu, dut, DIFFTEST_REG_SIZE);
     csr_writeback();
     // need to clear the cached mmu states as well
@@ -212,6 +217,16 @@ void isa_difftest_regcpy(void *dut, bool direction) {
 
 void isa_difftest_csrcpy(void *dut, bool direction) {
   if (direction == DIFFTEST_TO_REF) {
+    if(csr_array[CSR_MIP] != ((rtlreg_t*)dut)[CSR_MIP]) {
+      printf("CSRCPY Warning, dut interrupt inject !!!!!! dut mip %lx, ref mip %lx, different %lx\n", ((rtlreg_t*)dut)[CSR_MIP], csr_array[CSR_MIP], ((rtlreg_t*)dut)[CSR_MIP] ^ csr_array[CSR_MIP]);
+      printf("DUT mepc %lx mcause %lx mtvec %lx mstatus %lx mie %lx\n", ((rtlreg_t*)dut)[CSR_MEPC], ((rtlreg_t*)dut)[CSR_MCAUSE], ((rtlreg_t*)dut)[CSR_MTVEC], ((rtlreg_t*)dut)[CSR_MSTATUS], ((rtlreg_t*)dut)[CSR_MIE]);
+      printf("REF mepc %lx mcause %lx mtvec %lx mstatus %lx mie %lx\n", csr_array[CSR_MEPC], csr_array[CSR_MCAUSE], csr_array[CSR_MTVEC], csr_array[CSR_MSTATUS], csr_array[CSR_MIE]);
+    }
+    if(csr_array[CSR_SIP] != ((rtlreg_t*)dut)[CSR_SIP]) {
+      printf("CSRCPY Warning, dut interrupt inject !!!!!! dut sip %lx, ref sip %lx, different %lx\n", ((rtlreg_t*)dut)[CSR_SIP], csr_array[CSR_SIP], ((rtlreg_t*)dut)[CSR_SIP] ^ csr_array[CSR_SIP]);
+      printf("DUT sepc %lx scause %lx stvec %lx sstatus %lx sie %lx\n", ((rtlreg_t*)dut)[CSR_SEPC], ((rtlreg_t*)dut)[CSR_SCAUSE], ((rtlreg_t*)dut)[CSR_STVEC], ((rtlreg_t*)dut)[CSR_SSTATUS], ((rtlreg_t*)dut)[CSR_SIE]);
+      printf("REF sepc %lx scause %lx stvec %lx sstatus %lx sie %lx\n", csr_array[CSR_SEPC], csr_array[CSR_SCAUSE], csr_array[CSR_STVEC], csr_array[CSR_SSTATUS], csr_array[CSR_SIE]);
+    }
     memcpy(csr_array, dut, 4096 * sizeof(rtlreg_t));
   } else {
     memcpy(dut, csr_array, 4096 * sizeof(rtlreg_t));
@@ -284,6 +299,8 @@ void isa_difftest_raise_intr(word_t NO) {
 #endif // CONFIG_TDATA1_ICOUNT
   IFDEF(CONFIG_TDATA1_ITRIGGER, trig_action_t itrigger_action = check_triggers_itrigger(cpu.TM, NO));
 
+  printf("RAISE INTR Warning, dut interrupt inject !!!!!! interrupt NO 0x%lx\n", NO);
+
   cpu.pc = raise_intr(NO, cpu.pc);
 
   IFDEF(CONFIG_TDATA1_ITRIGGER, trigger_handler(TRIG_TYPE_ITRIG, itrigger_action, 0));
@@ -320,6 +337,9 @@ void isa_difftest_guided_exec(void * guide, uint64_t restore_count) {
 #else
 void isa_difftest_guided_exec(void * guide) {
 #endif // CONFIG_LIGHTQS
+  printf("GUIDED Exec Warning, dut exception inject !!!!!!\n");
+  printf("DUT htval %lx, mtval %lx, stval %lx, mtval2 %lx, vstval %lx, jump_target %lx, exception_num %lx, force_set_jump_target %d, force_raise_exception %d", cpu.execution_guide.htval, cpu.execution_guide.mtval, cpu.execution_guide.stval, cpu.execution_guide.mtval2, cpu.execution_guide.vstval, cpu.execution_guide.jump_target, cpu.execution_guide.exception_num, cpu.execution_guide.force_set_jump_target, cpu.execution_guide.force_raise_exception);
+
   memcpy(&cpu.execution_guide, guide, sizeof(struct ExecutionGuide));
 
   cpu.guided_exec = true;
