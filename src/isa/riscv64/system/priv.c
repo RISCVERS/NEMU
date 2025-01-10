@@ -2322,6 +2322,14 @@ static bool aia_extension_permit_check(const word_t *dest_access, bool is_write)
     if (!cpu.v && (cpu.mode == MODE_S) && mvien->seie) {
       longjmp_exception(EX_II);
     }
+    else if (cpu.v && (cpu.mode == MODE_S) && (hstatus->vgein == 0 || hstatus->vgein > CONFIG_GEILEN)) {
+      has_vi = true;
+    }
+  }
+  if (is_access(vstopei)) {
+    if (hstatus->vgein == 0 || hstatus->vgein > CONFIG_GEILEN) {
+      longjmp_exception(EX_II);
+    }
   }
   if (is_access(sip) || is_access(sie)) {
     if (cpu.v && (cpu.mode == MODE_S) && hvictl->vti) {
