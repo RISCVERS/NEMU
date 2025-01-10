@@ -30,13 +30,13 @@ class Serializer
   public:
     void serialize(uint64_t inst_count);
 
-    void serializePMem(uint64_t inst_count);
+    void serializePMem(uint64_t inst_count, uint8_t* pmem_addr, uint8_t* flash_addr);
 
-    void serializeRegs();
+    void serializeRegs(uint8_t* serialize_base_addr);
 
     explicit Serializer();
 
-    void init();
+    void init(bool flash_store_checkpoint);
 
     bool shouldTakeCpt(uint64_t num_insts);
     bool instrsCouldTakeCpt(uint64_t num_insts);
@@ -68,6 +68,7 @@ class Serializer
     const uint32_t MISCDoneFlag;
 
     bool regDumped{false};
+    bool flash_store_checkpoint{false};
 
     std::map<uint64_t, double> simpoint2Weights;
 
